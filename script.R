@@ -52,7 +52,6 @@ fn <- data$fn
 n1 <- tp+fp
 n0 <- tn+fn
 sens <- tp/(tp+fn)
-
 spec <- tn/(tn+fp)
 type <- ifelse(sens == 1 | spec == 1, 'clopper', 'logit')
 
@@ -202,7 +201,7 @@ sum(data$total_samples-(data$cases_number+data$control_number))
 # Total number of cases+controls (without benign)
 sum((data$cases_number+data$control_number))
 
-# Stage
+# Stage IV
 data <- db %>%
   select(study,stage_0_i_ii_percent,stage_iii_percent, stage_iv, with_stage_iv) %>%
   mutate_at(.vars = c('stage_0_i_ii_percent','stage_iii_percent', 'stage_iv'), as.numeric) %>%
@@ -847,106 +846,51 @@ legend("bottomright", c("without stage IV cases","with stage IV cases"), pch=16,
 
 # dev.off()
 
-#----5 Year of publication: 2017-----
-# Split (<=2017 v >2017) 
+#----5 With stage III-IV cases vs without stage III-IV cases----
 
 # Preparation of data
 data <- db %>% 
-  select(study,model_id, year, tp,fp,fn,tn) %>%
-  mutate(year2017 = ifelse(year<=2017, 'before', 'after')) %>%
+  select(study,model_id, with_stage_iii, tp,fp,fn,tn) %>%
   na.omit()
 
-table(data$year2017)
+table(data$with_stage_iii)
 
-# Published before and in 2017
+# Without stage III-IV cases
+without_iii <- data %>%
+  filter(with_stage_iii == 0)
 
-before2017 <- data %>%
-  filter(year<=2017)
+without_iii_long <- reshape.data(without_iii)
 
-before2017_long <- reshape.data(before2017)
+m_without_iii <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-1|model) + (group-1|study), 
+                       data=without_iii_long, 
+                       family = binomial(link='logit'))
 
-m_before2017 <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-1|model) + (group-1|study), 
-                data=before2017_long, 
-                family = binomial(link='logit'),
-                nAGQ=0)
+tab.glmer(m_without_iii)
 
-tab.glmer(m_before2017)
+fit_without_iii <- fit.glmer(m_without_iii, without_iii)
 
-fit_before2017 <- fit.glmer(m_before2017, before2017)
+# With stage III-IV cases
+with_iii <- data %>%
+  filter(with_stage_iii == 1)
 
-# Published after 2017
+with_iii_long <- reshape.data(with_iii)
 
-after2017 <- data %>%
-  filter(year>2017)
+m_with_iii <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-1|model) + (group-1|study), 
+                    data=with_iii_long, 
+                    family = binomial(link='logit'),
+                    nAGQ=0)
 
-after2017_long <- reshape.data(after2017)
+tab.glmer(m_with_iii)
 
-m_after2017 <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-1|model) + (group-1|study), 
-                      data=after2017_long, 
-                      family = binomial(link='logit'),
-                      nAGQ=0)
-
-tab.glmer(m_after2017)
-
-fit_after2017 <- fit.glmer(m_after2017, after2017)
-
+fit_with_iii <- fit.glmer(m_with_iii, with_iii)
 
 # SROC
 
-plot.glmer.subgroup(fit_before2017, fit_after2017,
-                    main = "Comparison of studies' models \n published before and after 2017")
-legend("bottomright", c("before 2017","after 2017"), pch=16, lty=1, col = c('red', 'blue'))
+plot.glmer.subgroup(fit_without_iii, fit_with_iii, 
+                    main = "D")
+legend("bottomright", c("Without stage III-IV cases","With stage III-IV cases"), pch=16, lty=1, col = c('red', 'blue'))
 
-#----5 Year of publication: 2014-----
-# Split (<=2014 v >2014) 
-
-# prep data
-data <- db %>% 
-  select(study,model_id, year, tp,fp,fn,tn) %>%
-  mutate(year2014 = ifelse(year<=2014,'before', 'after')) %>%
-  na.omit()
-
-table(data$year2014)
-
-# Published before and in 2014
-
-before2014 <- data %>%
-  filter(year<=2014)
-
-before2014_long <- reshape.data(before2014)
-
-m_before2014 <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-1|model) + (group-1|study), 
-                      data=before2014_long, 
-                      family = binomial(link='logit'),
-                      nAGQ=0)
-
-tab.glmer(m_before2014)
-
-fit_before2014 <- fit.glmer(m_before2014, before2014)
-
-# Published after 2014
-
-after2014 <- data %>%
-  filter(year>2014)
-
-after2014_long <- reshape.data(after2014)
-
-m_after2014 <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-1|model) + (group-1|study), 
-                     data=after2014_long, 
-                     family = binomial(link='logit'),
-                     nAGQ=0)
-
-tab.glmer(m_after2014)
-
-fit_after2014 <- fit.glmer(m_after2014, after2014)
-
-
-# SROC
-
-plot.glmer.subgroup(fit_before2014, fit_after2014, 
-                    main = "Comparison of studies' models \n published before and after 2014")
-legend("bottomright", c("before 2014","after 2014"), pch=16, lty=1, col = c('red', 'blue'))
-
+# dev.off()
 
 #----6 miRNA-21-5p-----
 # Studies with models that analysed miRNA-21-5p - all reported models
@@ -1167,107 +1111,53 @@ legend("bottomright", c("without stage IV cases","with stage IV cases"), pch=16,
 
 # dev.off()
 
-#----5 Year of publication: 2017-----
-# Split (<=2017 v >2017) 
+#----5 With stage III-IV cases vs without stage III-IV casess----
 
 # Preparation of data
 data <- db %>% 
   filter(preferred_model=='YES') %>%
-  select(study,model_id, year, tp,fp,fn,tn) %>%
-  mutate(year2017 = ifelse(year<=2017, 'before', 'after')) %>%
+  select(study,model_id, with_stage_iii, tp,fp,fn,tn) %>%
   na.omit()
 
-table(data$year2017)
+table(data$with_stage_iii)
 
-# Published before and in 2017
+# Without stage III-IV cases
+without_iii_pref <- data %>%
+  filter(with_stage_iii == 0)
 
-before2017_pref <- data %>%
-  filter(year<=2017)
+without_iii_pref_long <- reshape.data(without_iii_pref)
 
-before2017_long_pref <- reshape.data(before2017_pref)
+m_without_iii_pref <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-1|model), 
+                            data=without_iii_pref_long, 
+                            family = binomial(link='logit'),
+                            nAGQ=0)
 
-m_before2017_pref <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-1|model), 
-                           data=before2017_long_pref, 
-                           family = binomial(link='logit'),
-                           nAGQ=0)
+tab.glmer(m_without_iii_pref)
 
-tab.glmer(m_before2017_pref)
+fit_without_iii_pref <- fit.glmer(m_without_iii_pref, without_iii_pref)
 
-fit_before2017_pref <- fit.glmer(m_before2017_pref, before2017_pref)
+# With stage III-IV cases
+with_iii_pref <- data %>%
+  filter(with_stage_iii == 1)
 
-# Published after 2017
+with_iii_pref_long <- reshape.data(with_iii_pref)
 
-after2017_pref <- data %>%
-  filter(year>2017)
+m_with_iii_pref <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-1|model), 
+                         data=with_iii_pref_long, 
+                         family = binomial(link='logit'),
+                         nAGQ=0)
 
-after2017_long_pref <- reshape.data(after2017_pref)
+tab.glmer(m_with_iii_pref)
 
-m_after2017_pref <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-1|model), 
-                          data=after2017_long_pref, 
-                          family = binomial(link='logit'),
-                          nAGQ=0)
-
-tab.glmer(m_after2017_pref)
-
-fit_after2017_pref <- fit.glmer(m_after2017_pref, after2017_pref)
-
+fit_with_iii_pref <- fit.glmer(m_with_iii_pref, with_iii_pref)
 
 # SROC
 
-plot.glmer.subgroup(fit_before2017_pref, fit_after2017_pref,
-                    main = "Comparison of studies' preferred models \n published before and after 2017")
-legend("bottomright", c("before 2017","after 2017"), pch=16, lty=1, col = c('red', 'blue'))
+plot.glmer.subgroup(fit_without_iii_pref, fit_with_iii_pref, 
+                    main = "D")
+legend("bottomright", c("Without stage III-IV cases","With stage III-IV cases"), pch=16, lty=1, col = c('red', 'blue'))
 
-#----5 Year of publication: 2014-----
-# Split (<=2014 v >2014) 
-
-# Preparation of data
-data <- db %>% 
-  filter(preferred_model=='YES') %>%
-  select(study,model_id, year, tp,fp,fn,tn) %>%
-  mutate(year2014 = ifelse(year<=2014, 'before', 'after')) %>%
-  na.omit()
-
-table(data$year2014)
-
-# Published before and in 2014
-
-before2014_pref <- data %>%
-  filter(year<=2014)
-
-before2014_long_pref <- reshape.data(before2014_pref)
-
-m_before2014_pref <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-1|model), 
-                           data=before2014_long_pref, 
-                           family = binomial(link='logit'),
-                           nAGQ=0)
-
-tab.glmer(m_before2014_pref)
-
-fit_before2014_pref <- fit.glmer(m_before2014_pref, before2014_pref)
-
-# Published after 2014
-
-after2014_pref <- data %>%
-  filter(year>2014)
-
-after2014_long_pref <- reshape.data(after2014_pref)
-
-m_after2014_pref <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-1|model), 
-                          data=after2014_long_pref, 
-                          family = binomial(link='logit'),
-                          nAGQ=0)
-
-tab.glmer(m_after2014_pref)
-
-fit_after2014_pref <- fit.glmer(m_after2014_pref, after2014_pref)
-
-
-# SROC
-
-plot.glmer.subgroup(fit_before2014_pref, fit_after2014_pref,
-                    main = "Comparison of studies' preferred model \n published before and after 2014")
-legend("bottomright", c("before 2014","after 2014"), pch=16, lty=1, col = c('red', 'blue'))
+# dev.off()
 
 #----6 miRNA-21-5p-----
 # Studies with models that analysed miRNA-21-5p - preferred models
@@ -1300,6 +1190,7 @@ points(fpr(fit_mir21_pref$freqdata), sens(fit_mir21_pref$freqdata), cex=1, pch =
        col = 'blue')
 
 # dev.off()
+
 
 #------Outlier analysis ------
 
@@ -1334,9 +1225,14 @@ data$model_id[data$z > 2]
 table(data_complete$study)
 # Number of studies
 length(unique(data_complete$study))
-study <- factor(data_complete$study, label=1:37)
+study <- factor(data_complete$study, label=1:46)
 
+#' Influence analysis on all the models of the meta-analysed studies
 influence_complete <- influence(m, group = 'model')
+
+#' Calculating and reporting the influence of the studies 
+#' themselves by taking into account
+#' all extracted models from the studies
 influence_complete_study <- influence(m, group = 'study')
 plot.estex(influence_complete_study,
            which='cook', 
@@ -1367,6 +1263,8 @@ cook <- cook %>%
   mutate(z = (cook - mean(cook))/sd(cook)) %>%
   distinct() 
 
+#' Reporting the influence of all extracted models 
+#' from the meta-analysed studies
 g1 <- ggplot(cook, aes(x=cook, y=model)) +
   geom_point(col=study)+
   xlab("Cook's distance")+
@@ -1394,9 +1292,7 @@ m_ex <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 + (group-
 
 tab.glmer(m_ex)
 
-
-# Influence analysis on preferred models 
-
+#' Influence analysis on preferred models
 influence_pref <- influence(mp, group = 'model')
 cook_pref <- cooks.distance.estex(influence_pref)
 cook_pref <- as.data.frame(cook_pref)
@@ -1409,6 +1305,8 @@ cook_pref <- cook_pref %>%
   mutate(z = (cook-mean(cook))/sd(cook)) %>%
   distinct()
 
+#' Reporting the influence of the most important models 
+#' extracted from each study
 g2 <- ggplot(cook_pref, aes(x=cook, y=study)) +
   geom_point(col='dodgerblue1')+
   xlab("Cook's distance")+
@@ -1420,7 +1318,7 @@ g2 <- ggplot(cook_pref, aes(x=cook, y=study)) +
         axis.title.y = element_blank())
 
 # Tiff-figures - skip if no output is desired
-# tiff(file = "Influence.tiff", width = 4700, height = 2100, units = "px", res = 400)
+# tiff(file = "Influence.tiff", width = 4800, height = 2400, units = "px", res = 400)
 
 cowplot::plot_grid(g2,g1)
 
@@ -1445,22 +1343,50 @@ tab.glmer(mp_ex)
 
 
 # --------- Preference - ratios --------
-# Based on case/control ratio and 
-# predicted positive (TP+FP) and predicted negative (TN+FN) ratio
+#' Based on case/control ratio and 
+#' predicted positive (TP+FP) and predicted negative (TN+FN) ratio
 
 # 5 groups - cutpoints
 data <- db %>%
   select(study, model_id, 
          tp,fp,tn,fn, tp_fp, tn_fn,
-         control_number, cases_number) %>%
-  mutate(arm_ratio = cases_number/control_number,
+         control_number, cases_number, benign_number) %>%
+  mutate(arm_ratio = ifelse(model_id %in% c('Swellam et al. 2019_2_A', 
+                                            'Swellam et al. 2019_2_B',
+                                            'Swellam et al. 2019_2_C',
+                                            'Swellam et al. 2019_2_D',
+                                            'Swellam et al. 2019_2_E',
+                                            'Swellam et al. 2019_2_F',
+                                            'Swellam et al. 2019_2_G',
+                                            
+                                            'Swellam et al. 2021_A',
+                                            'Swellam et al. 2019_A',
+                                            'Swellam et al. 2019_B',
+                                            'Swellam et al. 2019_C',
+                                            'Swellam et al. 2019_D',
+                                            'Swellam et al. 2019_E',
+                                            'Swellam et al. 2019_F',
+                                            'Swellam et al. 2019_G',
+                                            
+                                            'Fang et al 2019_B',
+                                            
+                                            
+                                            'Zou et al. 2021_2_B',
+                                            
+                                            'Shaker et al. 2021_A',
+                                            'Shaker et al. 2021_B'), cases_number/(control_number+benign_number), cases_number/control_number),
          cat_arm_ratio = cut(arm_ratio, breaks = c(0,0.4,0.8,1.2,1.6, Inf)),
          screen_ratio = tp_fp/tn_fn,
          cat_screen_ratio = cut(screen_ratio, breaks = c(0,0.4,0.8,1.2,1.6, Inf))) %>%
   na.omit() %>%
   mutate(sens = tp/(tp+fn),
          spec = tn/(tn+fp),
-         fpr= 1-spec)
+         fpr= 1-spec) %>%
+  filter(!model_id %in% c("Zou et al. 2022_C",
+                          "Zou et al. 2022_D" ))
+
+#' Two models from Zou et al. 2022 were removed as they were subsets of cohorts
+#' and could therefore not represent case/control preferences
 
 mean_arm <- data %>%
   group_by(cat_arm_ratio) %>%
@@ -1547,15 +1473,44 @@ legend("topleft",
 data <- db %>%
   select(study, model_id, 
          tp,fp,tn,fn,tp_fp, tn_fn, 
-         control_number, cases_number) %>%
-  mutate(arm_ratio = cases_number/control_number,
+         control_number, cases_number, benign_number) %>%
+  mutate(arm_ratio = ifelse(model_id %in% c('Swellam et al. 2019_2_A', 
+                                            'Swellam et al. 2019_2_B',
+                                            'Swellam et al. 2019_2_C',
+                                            'Swellam et al. 2019_2_D',
+                                            'Swellam et al. 2019_2_E',
+                                            'Swellam et al. 2019_2_F',
+                                            'Swellam et al. 2019_2_G',
+                                            
+                                            'Swellam et al. 2021_A',
+                                            'Swellam et al. 2019_A',
+                                            'Swellam et al. 2019_B',
+                                            'Swellam et al. 2019_C',
+                                            'Swellam et al. 2019_D',
+                                            'Swellam et al. 2019_E',
+                                            'Swellam et al. 2019_F',
+                                            'Swellam et al. 2019_G',
+                                            
+                                            'Fang et al 2019_B',
+                                            
+                                            
+                                            'Zou et al. 2021_2_B',
+                                            
+                                            'Shaker et al. 2021_A',
+                                            'Shaker et al. 2021_B'), cases_number/(control_number+benign_number), cases_number/control_number),
+         
          cat_arm_ratio = cut(arm_ratio, breaks = c(0,0.7,1.3, Inf)),
          screen_ratio = tp_fp/tn_fn,
          cat_screen_ratio = cut(screen_ratio, breaks = c(0,0.7,1.3, Inf))) %>%
   na.omit() %>%
   mutate(sens = tp/(tp+fn),
          spec = tn/(tn+fp),
-         fpr= 1-spec)
+         fpr= 1-spec) %>%
+  filter(!model_id %in% c("Zou et al. 2022_C",
+                          "Zou et al. 2022_D" ))
+
+#' Two models from Zou et al. 2022 were removed as they were subsets of cohorts
+#' and could therefore not represent case/control preferences
 
 mean_arm <- data %>%
   group_by(cat_arm_ratio) %>%
@@ -1648,7 +1603,9 @@ legend("topleft",
 data_wide <- db %>%
   select(study, model_id, picture_name, 
          control_number, cases_number, benign_number,
-         starts_with('roc_sens'), starts_with('roc_1_spec'))
+         starts_with('roc_sens'), starts_with('roc_1_spec')) %>%
+  filter(!model_id %in% c("Zou et al. 2022_C",
+                          "Zou et al. 2022_D" ))
 
 data_long <- melt(setDT(data_wide), 
                   measure = patterns('roc_sens', 'roc_1_spec'), 
@@ -1678,7 +1635,13 @@ data <- data_long %>%
                                            'Swellam et al. 2019_F',
                                            'Swellam et al. 2019_G',
                                            
-                                           'Fang_et_al_2019_B'),                                            
+                                           'Fang et al 2019_B',
+                                          
+                                          
+                                           'Zou et al. 2021_2_B',
+                                          
+                                           'Shaker et al. 2021_A',
+                                           'Shaker et al. 2021_B'),                                            
                           control_number + cases_number + benign_number,
                           control_number + cases_number),
          npos = cases_number, 
@@ -1698,8 +1661,14 @@ data <- data_long %>%
                                         'Swellam et al. 2019_E',
                                         'Swellam et al. 2019_F',
                                         'Swellam et al. 2019_G',
-                                        
-                                        'Fang_et_al_2019_B'),
+                                       
+                                        'Fang et al 2019_B',
+                                       
+                                       
+                                        'Zou et al. 2021_2_B',
+                                       
+                                        'Shaker et al. 2021_A',
+                                        'Shaker et al. 2021_B'),
                        control_number + benign_number,
                        control_number),
          # calculate TP,FN,FP,TN for every pair of (sens, 1-spec) using totals
@@ -1882,6 +1851,7 @@ preference_pref <- cost_db %>%
 # All reported models
 
 # Alpha method
+
 summary(preference$alphamin)
 table(preference$cat_alphamin)
 
@@ -1906,9 +1876,16 @@ summary(mgcv::gam(log(sensitivity/specificity)~s(alphamin),
 spec_preference_alpha <- preference %>%
   filter(z_alphamin< -0.8)
 
+spec_preference_alpha <- spec_preference_alpha %>%
+  mutate(higher_spec = ifelse(specificity>sensitivity,1,0))
+table(spec_preference_alpha$higher_spec)
+
 sens_preference_alpha <- preference %>%
   filter(z_alphamin>0.8)
 
+sens_preference_alpha <- sens_preference_alpha %>%
+  mutate(higher_sens = ifelse(specificity<sensitivity,1,0))
+table(sens_preference_alpha$higher_sens)
 
 # C1 method
 summary(preference$c1)
@@ -1934,9 +1911,17 @@ summary(mgcv::gam(log(sensitivity/specificity)~s(c1),
 
 spec_preference_c1 <- preference %>%
   filter(z_c1< -0.8)
+
+spec_preference_c1<-spec_preference_c1 %>%
+  mutate(higher_spec = ifelse(specificity>sensitivity,1,0))
+table(spec_preference_c1$higher_spec)
   
 sens_preference_c1 <-preference %>%
   filter(z_c1> 0.8)
+
+sens_preference_c1 <- sens_preference_c1  %>%
+  mutate(higher_sens = ifelse(specificity<sensitivity,1,0))
+table(sens_preference_c1$higher_sens)
 
 table(preference$cat_alphamin, preference$cat_c1)
 
@@ -2041,15 +2026,16 @@ summary(test.egger)
 # Trim fill
 
 rma <- rma(effect_size, sample_variance,
-           method = 'REML', slab = study)
+           method = 'REML', slab = model_id)
 
 (tf <- trimfill(rma))
 
-lab <- str_sub(tf$slab[1:105], start = 1, end = -3)
-lab.fill <- str_sub(tf$slab[106:137], start = 1, end = 6)
+lab <- str_sub(tf$slab[1:146], start = 1, end = -3)
+lab.fill <- str_sub(tf$slab[147:191], start = 1, end = 6)
 lab <- append(lab, lab.fill)
+lab
 
-lab <- factor(lab, labels = 1:39)
+lab <- factor(lab, labels = 1:47)
 
 # Tiff-figures - skip if no output is desired
 # tiff(file = "Publication_bias.tiff", width = 3700, height = 2700, units = "px", res = 400)
@@ -2057,7 +2043,7 @@ lab <- factor(lab, labels = 1:39)
 funnel(tf$yi, tf$vi, yaxis = "sei", 
        level=c(90, 95, 99), back = "white",
        shade=c("gray95", "gray55", "gray75"), 
-       col = c(lab[1:105], rep('grey40',32)),
+       col = c(lab[1:147], rep('grey40',44)),
        refline=0, pch = 16, legend = T)
 
 # dev.off()
@@ -2357,6 +2343,61 @@ summary(m_without_q)
 metafor::forest(m_without_q, cex = 0.5, cex.lab = 1, 
                 annotate=F, slab=NA, xlim=c(-2,12))
 
+#-----2.5 with or without stage III-IV cases--------
+
+data <- db %>%
+  select(study, model_id, q_tp,q_fp,q_fn,q_tn, with_stage_iii) %>%
+  rename(tp = 'q_tp',
+         fp = 'q_fp',
+         fn = 'q_fn',
+         tn = 'q_tn') %>%
+  na.omit() 
+
+table(data$with_stage_iii)
+
+# with stage IV cases
+
+with_iii_q <- data %>%
+  filter(with_stage_iii==1)
+
+model_id <- with_iii_q$model_id
+tp <- with_iii_q$tp
+fp <- with_iii_q$fp
+fn <- with_iii_q$fn
+tn <- with_iii_q$tn
+study <- with_iii_q$study
+
+effect_size <- escalc(measure = "OR", ai = tp, ci = fp, bi = fn, di = tn)$yi
+sample_variance <- escalc(measure = "OR", ai = tp, ci = fp, bi = fn, di = tn)$vi
+
+m_with_iii_q <- rma.mv(effect_size, sample_variance, random = ~1|study,
+                   method = 'REML', slab = study)
+summary(m_with_iii_q)
+metafor::forest(m_with_iii_q, cex = 0.5, cex.lab = 1, 
+                annotate=F, slab=NA, xlim=c(-2,12))
+
+# without stage iii-iV cases
+
+without_iii_q <- data %>%
+  filter(with_stage_iii==0)
+
+model_id <- without_iii_q$model_id
+tp <- without_iii_q$tp
+fp <- without_iii_q$fp
+fn <- without_iii_q$fn
+tn <- without_iii_q$tn
+study <- without_iii_q$study
+
+effect_size <- escalc(measure = "OR", ai = tp, ci = fp, bi = fn, di = tn)$yi
+sample_variance <- escalc(measure = "OR", ai = tp, ci = fp, bi = fn, di = tn)$vi
+
+m_without_iii_q <- rma.mv(effect_size, sample_variance, random = ~1|study,
+                      method = 'REML', slab = study)
+summary(m_without_iii_q)
+metafor::forest(m_without_iii_q, cex = 0.5, cex.lab = 1, 
+                annotate=F, slab=NA, xlim=c(-2,12))
+
+
 
 #----3 Univariate subgroup analysis with metafor: Preferred models-----
 
@@ -2564,6 +2605,59 @@ m_without_q <- rma.uni(effect_size, sample_variance, method = 'REML', slab = stu
 summary(m_without_q)
 metafor::forest(m_without_q)
 
+#-----3.5 With or without stage III-IV cases--------
+
+data <- db %>%
+  filter(preferred_model=='YES') %>%
+  select(study, model_id, q_tp,q_fp,q_fn,q_tn, with_stage_iii) %>%
+  rename(tp = 'q_tp',
+         fp = 'q_fp',
+         fn = 'q_fn',
+         tn = 'q_tn') %>%
+  na.omit() 
+
+table(data$with_stage_iii)
+
+# With stage III-IV cases
+
+with_iii_q <- data %>%
+  filter(with_stage_iii==1)
+
+model_id <- with_iii_q$model_id
+tp <- with_iii_q$tp
+fp <- with_iii_q$fp
+fn <- with_iii_q$fn
+tn <- with_iii_q$tn
+
+study <- with_iii_q$study
+
+effect_size <- escalc(measure = "OR", ai = tp, ci = fp, bi = fn, di = tn)$yi
+sample_variance <- escalc(measure = "OR", ai = tp, ci = fp, bi = fn, di = tn)$vi
+
+m_with_iii_q <- rma.uni(effect_size, sample_variance, method = 'REML', slab = study)
+summary(m_with_iii_q)
+metafor::forest(m_with_iii_q)
+
+# Without stage III-IV cases
+
+without_iii_q <- data %>%
+  filter(with_stage_iii==0)
+
+model_id <- without_iii_q$model_id
+tp <- without_iii_q$tp
+fp <- without_iii_q$fp
+fn <- without_iii_q$fn
+tn <- without_iii_q$tn
+study <- without_iii_q$study
+
+effect_size <- escalc(measure = "OR", ai = tp, ci = fp, bi = fn, di = tn)$yi
+sample_variance <- escalc(measure = "OR", ai = tp, ci = fp, bi = fn, di = tn)$vi
+
+m_without_iii_q <- rma.uni(effect_size, sample_variance, method = 'REML', slab = study)
+summary(m_without_iii_q)
+metafor::forest(m_without_iii_q)
+
+
 #------Fixed effects analysis-------
 
 #----All reported models-------
@@ -2571,12 +2665,13 @@ metafor::forest(m_without_q)
 data_adjusted <- db %>%
   select(model_id,
          source, mi_rna_panel, 
-         normalizer_method, with_stage_iv) %>%
+         normalizer_method, with_stage_iii,
+         with_stage_iv) %>%
   filter(source %in% c('Plasma', 'Serum'),
          mi_rna_panel %in% c('Single', 'Multiple'),
          normalizer_method %in% c('endogenous','exogenous')) %>%
   na.omit() %>%
-  mutate_at(.vars = 'with_stage_iv', as.factor)
+  mutate_at(.vars = c('with_stage_iii','with_stage_iv'), as.factor)
 
 data_adjusted_long <- data_complete_long %>%
   inner_join(data_adjusted, by='model_id')
@@ -2587,6 +2682,7 @@ m_adj <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1
                + source 
                + mi_rna_panel
                + normalizer_method
+               + with_stage_iii
                + with_stage_iv
                + (group-1|model) + (group-1|study), 
            data=data_adjusted_long, 
@@ -2596,17 +2692,19 @@ tab_model(m_adj)
 # Details on model with fixed effects - comparison between binary groups in fixed effects
 summary(m_adj)
 
+
 #-----Preferred models-------
 
 data_adjusted <- db %>%
   select(model_id,
          source, mi_rna_panel, 
-         normalizer_method, with_stage_iv) %>%
+         normalizer_method, with_stage_iii,
+         with_stage_iv) %>%
   filter(source %in% c('Plasma', 'Serum'),
          mi_rna_panel %in% c('Single', 'Multiple'),
          normalizer_method %in% c('endogenous','exogenous')) %>%
   na.omit() %>%
-  mutate_at(.vars = 'with_stage_iv', as.factor)
+  mutate_at(.vars = c('with_stage_iii','with_stage_iv'), as.factor)
 
 data_adjusted_pref_long <- data_pref_long %>%
   inner_join(data_adjusted, by='model_id')
@@ -2617,12 +2715,104 @@ m_adj_pref <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1
                + source 
                + mi_rna_panel
                + normalizer_method
+               + with_stage_iii
                + with_stage_iv
-               + (group-1|model) + (group-1|study), 
+               + (group-1|model), 
                data=data_adjusted_pref_long, 
                family = binomial(link='logit'),           
                nAGQ=0)
 
+tab_model(m_adj_pref)
+
 # Details on model with fixed effects - comparison between binary groups in fixed effects
 summary(m_adj_pref)
+
+
+#-----Stratification by year-------
+stratify_year <- function(y){
+  
+  data <- db %>%
+    select(model_id, year) %>%
+    filter(year == y)
+  
+  data_long <- data_complete_long %>%
+    inner_join(data, by='model_id')
+  
+  #' model
+  #' nested model: more models per study taken into account
+  m_year <- glmer(formula = cbind(wellclassified, misclassified) ~ group-1 
+                  + (group-1|model) + (group-1|study), 
+                  data=data_long, 
+                  family = binomial(link='logit'),           
+                  nAGQ=0)
+  tab.glmer(m_year)
+  
+  res <- m_year@beta %>%
+    as.data.frame() %>%
+    mutate_all(inv.logit) %>%
+    mutate_all(round,2) 
+  
+  names(res) <- y
+  rownames(res) <- c('Sensitivity', 'Specificity')
+  
+  return(res)
+  
+}
+
+
+table(db$year)
+
+#res2010 <- stratify_year(2010) commented as an error will be shown due to the low number of models in year 20210
+res2012 <- stratify_year(2012)
+res2013 <- stratify_year(2013)
+#res2014 <- stratify_year(2014) commented as an error will be shown due to the low number of models in year 20210
+res2015 <- stratify_year(2015)
+#res2016 <- stratify_year(2016) commented as an error will be shown due to the low number of models in year 20210
+res2017 <- stratify_year(2017)
+res2018 <- stratify_year(2018)
+res2019 <- stratify_year(2019)
+res2020 <- stratify_year(2020)
+res2021 <- stratify_year(2021)
+res2022 <- stratify_year(2022)
+
+res <- cbind(#res2010, 
+  res2012, 
+  res2013,
+  # res2014, 
+  res2015,
+  # res2016, 
+  res2017,
+  res2018, 
+  res2019,
+  res2020, 
+  res2021,
+  res2022) %>%
+  rownames_to_column() %>%
+  rename(term = 'rowname')
+
+res
+
+res_long <- melt(setDT(res), id.vars = c("term"), variable.name = "year") %>%
+  as.data.frame()
+
+# tiff(file = "Year_diagnostic_P_trend.tiff", width = 3800, height = 2000, units = "px", res = 400)
+
+res_long %>%
+  ggplot(aes(x=year, y=value, group=term)) +
+  geom_point(aes(color=term))+
+  geom_line(aes(color=term), size = 1.1) +
+  theme_classic()+
+  theme(axis.title = element_text(size=15),
+        axis.text = element_text(size=12, colour = 'black'),
+        legend.text = element_text(size=12, color='black'))+
+  xlab("Year")+
+  ylab("Pooled estimate")+
+  labs(color = "")
+
+# dev.off()
+
+sens_m <- lm(value~as.numeric(year), data=res_long[res_long$term=='Sensitivity',])
+tab_model(sens_m)
+spec_m <- lm(value~as.numeric(year), data=res_long[res_long$term=='Specificity',])
+tab_model(spec_m)
 
